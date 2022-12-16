@@ -1,0 +1,1525 @@
+---
+title : "Sustainability Dashboard"
+output:
+  flexdashboard::flex_dashboard:
+    vertical_layout: fill
+    theme:
+      version: 5
+      bg: "#ffffff"
+      fg: "#198286"
+      primary: "#0d7682"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, library(haven),library(dplyr),library(tidyr),library(readxl),library(ggplot2),library(tidyverse),library(plotly),library(gghighlight),library(crosstalk), library(crosstool), library(flexdashboard),library(htmltools),library(shiny),require(shinydashboard), library(viridis))
+```
+
+
+SPI, GDP and CO₂ emissions {.storyboard}
+=====================================
+
+
+### **Social Progress Index and CO₂ emissions per capita**
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+df1 <- read_rds("data1.Rds")
+
+sd <- highlight_key(subset(df1, score_spi != "NA" & co2_percap != "NA" & GDP_pc != "NA") , ~country)
+
+g1<-ggplot(sd,
+          aes(x = score_spi  , y = co2_percap, frame= spiyear)) +
+  geom_jitter(aes(size= population, ids= spicountrycode),
+              color="black",
+              shape = 21,
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population, ids= country, color = score_spi , text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>SPI score</b>: %s (%s pt from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(score_spi, digits = 2),
+    ifelse(score_spi_diff > 0 , paste0("+", score_spi_diff), score_spi_diff),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change)
+    )),
+    alpha = .7) +
+  geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Social Progress Index score") +
+  scale_y_continuous(
+    trans = "log10",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    limits = c(25, 100),
+    labels = function(x) {
+      round(x , digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "SPI \nscore",
+       size= "GDP per capita") +
+  guides(color = guide_colourbar(label = FALSE)) +
+  scale_color_gradient(low = "darkseagreen2", high = "dodgerblue4")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+
+
+highlight(ggplotly(g1,  tooltip = "text"),
+          "plotly_click", 
+          selectize = FALSE,
+          persistent = TRUE,
+          opacityDim = 0.1) %>% 
+  animation_opts(
+    1000, easing = "linear", redraw = TRUE
+  ) %>%
+  animation_button(
+    label = "Animate"
+  ) %>%
+  animation_slider(
+    currentvalue = list(prefix = "Year: ", font = list(color="black"), x = 1, xanchor = "right", y = 0, yanchor = "bottom")
+  )%>%
+  config(displayModeBar = FALSE)
+
+```
+
+*** 
+
+**The graph shows the relationship between the Social Progress Index and consumption based CO₂ emissions per capita.**
+
+- Animate the graphic to track the trajectory of countries over time.
+
+- It is possible to highlight multiple countries by clicking on them. Double click (on empty spots) to refresh selection.
+
+- Hover the cursor over the dots to visualize country details.
+
+- The size of the dots corresponds to the size of the population and the horizontal dashed line represents the average CO₂ emissions necessary level to keep the temperature increase below 1.5°C by 2030.
+
+
+### **Gross Domestic Product per capita and consumption based CO₂ emissions per capita**
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+g2<-ggplot(sd,
+          aes(x = GDP_pc  , y = co2_percap, frame = spiyear)) +
+  geom_jitter(aes(size= population, ids = country),
+              shape = 21,
+              color = "black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population, ids = country, color = co2_percap, text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>SPI score</b>: %s (%s pt from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(score_spi, digits = 2),
+    ifelse(score_spi_diff > 0 , paste0("+", score_spi_diff), score_spi_diff),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change)
+    )),
+    alpha = .7) +
+  geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("CO₂ emissions (logarithmic scale)") +
+  xlab("GDP per capita (logarithmic scale)") +
+  scale_y_continuous(
+    trans = "log10",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x/1000 , digits = 2), 'K')
+    }
+  ) +
+  labs(title = "" ,
+       color = "CO₂ \nEmissions",
+       size= "GDP per capita") +
+  guides(color = guide_colourbar(label = FALSE)) +
+  scale_color_gradient(low = "lightblue4", high = "darkorange")+
+  scale_size(range = c(3,14), guide = "none")+
+  theme_minimal()+
+  theme(
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+
+highlight(ggplotly(g2,  tooltip = "text"),
+          "plotly_click", 
+          selectize = FALSE,
+          persistent = TRUE,
+          opacityDim = 0.1) %>% 
+  animation_opts(
+    1000, easing = "linear", redraw = TRUE
+  ) %>%
+  animation_button(
+    label = "Animate"
+  ) %>%
+  animation_slider(
+    currentvalue = list(prefix = "Year: ", font = list(color="black"), x = 1, xanchor = "right", y = 0, yanchor = "bottom")
+  )%>%
+  config(displayModeBar = FALSE)
+
+
+```
+
+*** 
+
+**The graph shows the relationship between per capita GDP and consumption based CO₂ emissions per capita.**
+
+- Animate the graphic to track the trajectory of countries over time.
+
+- It is possible to highlight multiple countries by clicking on them. Double click (on empty spots) to refresh selection.
+
+- Hover the cursor over the dots to visualize country details.
+
+- The size of the dots corresponds to the size of the population and the horizontal dashed line represents the average CO₂ emissions necessary level to keep the temperature increase below 1.5°C by 2030.
+
+Country groups  {.storyboard}
+=========================================
+
+
+### **SPI tier 1 countries**
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+df1_tier1<- df1 %>%
+  filter(tiers == "Tier 1")
+sd__tier1 <- highlight_key(df1_tier1, ~country)
+
+g1<-ggplot(sd__tier1,
+           aes(x = score_spi  , y = co2_percap, frame= spiyear)) +
+  geom_jitter(aes(size= population, ids = country),
+              shape = 21,
+              color = "black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size = population, ids = country, color = score_spi, text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>SPI score</b>: %s (%s pt from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(score_spi, digits = 2),
+    ifelse(score_spi_diff > 0 , paste0("+", score_spi_diff), score_spi_diff),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change))),
+    alpha = .7) +
+  geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Social Progress Index score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    labels = function(x) {
+      round(x, digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "SPI \nscore",
+       size= "GDP per capita") +
+  guides(color = guide_colourbar(label = FALSE)) +
+  scale_color_gradient(low = "darkseagreen2", high = "dodgerblue4")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+
+
+highlight(ggplotly(g1,  tooltip = "text"),
+          "plotly_click", 
+          selectize = FALSE,
+          persistent = TRUE,
+          opacityDim = 0.1) %>% 
+  animation_opts(
+    1000, easing = "linear", redraw = TRUE
+  ) %>%
+  animation_button(
+    label = "Animate"
+  ) %>%
+  animation_slider(
+    currentvalue = list(prefix = "Year: ", font = list(color="black"), x = 1, xanchor = "right", y = 0, yanchor = "bottom")
+  )%>%
+  config(displayModeBar = FALSE)
+```
+
+*** 
+
+**The graph shows the relationship between SPI tier 1 countries (highest SPI scores) and consumption based CO₂ emissions per capita.**
+
+- Countries can be added to this group over time as they increase their SPI scores
+
+- Animate the graphic to track the trajectory of countries over time.
+
+- It is possible to highlight multiple countries by clicking on them. Double click (on empty spots) to refresh selection.
+
+- Hover the cursor over the dots to visualize country characteristics.
+
+- The size of the dots corresponds to the size of the population and the horizontal dashed line represents the average CO₂ emissions necessary level to keep the temperature increase below 1.5°C by 2030.
+
+
+
+### **SPI tier 6 countries**
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+df1_tier6<- df1 %>%
+  filter(tiers == "Tier 6" & score_spi != "NA" & co2_percap!= "NA")
+sd__tier6 <- highlight_key(df1_tier6, ~country)
+
+g1<-ggplot(sd__tier6,
+           aes(x = score_spi  , y = co2_percap, frame= spiyear)) +
+  geom_jitter(aes(size= population, ids = country),
+              shape = 21,
+              color = "black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size = population, ids = country, color = score_spi, text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>SPI score</b>: %s (%s pt from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(score_spi, digits = 2),
+    ifelse(score_spi_diff > 0 , paste0("+", score_spi_diff), score_spi_diff),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change))),
+    alpha = .7) +
+  geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Social Progress Index score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    labels = function(x) {
+      round(x, digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "SPI \nscore",
+       size= "GDP per capita") +
+  guides(color = guide_colourbar(label = FALSE)) +
+  scale_color_gradient(low = "darkseagreen2", high = "dodgerblue4")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+
+
+highlight(ggplotly(g1,  tooltip = "text"),
+          "plotly_click", 
+          selectize = FALSE,
+          persistent = TRUE,
+          opacityDim = 0.1) %>% 
+  animation_opts(
+    1000, easing = "linear", redraw = TRUE
+  ) %>%
+  animation_button(
+    label = "Animate"
+  ) %>%
+  animation_slider(
+    currentvalue = list(prefix = "Year: ", font = list(color="black"), x = 1, xanchor = "right", y = 0, yanchor = "bottom")
+  )%>%
+  config(displayModeBar = FALSE)
+```
+
+*** 
+
+**The graph shows the relationship between SPI tier 6 countries (the lowest SPI scores) and consumption based CO₂ emissions per capita.**
+
+- Countries can move out from this group over time as they increase their SPI scores
+
+- Animate the graphic to see the trajectory of countries over time.
+
+- It is possible to highlight multiple countries by clicking on them. Double click (on empty spots) to refresh selection.
+
+- Hover the cursor over the dots to visualize country details.
+
+- The size of the dots corresponds to the size of the population and the horizontal dashed line represents the average CO₂ emissions necessary level to keep the temperature increase below 1.5°C by 2030.
+
+### **G7 countries**
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+df1_G7<- df1 %>%
+  filter(G7 == "G7")
+sd__G7 <- highlight_key(df1_G7, ~country)
+
+g1<-ggplot(sd__G7,
+           aes(x = score_spi  , y = co2_percap, frame= spiyear)) +
+  geom_jitter(aes(size= population, ids = country),
+              shape = 21,
+              color = "black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population, ids= country, color = score_spi, text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>SPI score</b>: %s (%s pt from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(score_spi, digits = 2),
+    ifelse(score_spi_diff > 0 , paste0("+", score_spi_diff), score_spi_diff),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change))),
+    alpha = .7) +
+  geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Social Progress Index score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    labels = function(x) {
+      round(x, digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "SPI \nscore",
+       size= "GDP per capita") +
+  guides(color = guide_colourbar(label = FALSE)) +
+  scale_color_gradient(low = "darkseagreen2", high = "dodgerblue4")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+
+
+highlight(ggplotly(g1,  tooltip = "text"),
+          "plotly_click", 
+          selectize = FALSE,
+          persistent = TRUE,
+          opacityDim = 0.1) %>% 
+  animation_opts(
+    1000, easing = "linear", redraw = TRUE
+  ) %>%
+  animation_button(
+    label = "Animate"
+  ) %>%
+  animation_slider(
+    currentvalue = list(prefix = "Year: ", font = list(color="black"), x = 1, xanchor = "right", y = 0, yanchor = "bottom")
+  )%>%
+  config(displayModeBar = FALSE)
+```
+
+*** 
+
+**The graph shows the relationship between G7 countries SPI score and consumption based CO₂ emissions per capita.**
+
+- The G7 countries are Canada, France, Germany, Italy, Japan, the United Kingdom and the United States.
+
+- Animate the graphic to track the trajectory of countries over time.
+
+- It is possible to highlight multiple countries by clicking on them. Double click (on empty spots) to refresh selection.
+
+- Hover the cursor over the dots to visualize country details.
+
+- The size of the dots corresponds to the size of the population and the horizontal dashed line represents the average CO₂ emissions necessary level to keep the temperature increase below 1.5°C by 2030.
+
+
+### **Top emerging markets (BRICS)** 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+
+df1_BRICS<- df1 %>%
+  filter(BRICS == "BRICS")
+sd__BRICS <- highlight_key(df1_BRICS, ~country)
+
+g1<-ggplot(sd__BRICS,
+           aes(x = score_spi  , y = co2_percap, frame= spiyear)) +
+  geom_jitter(aes(size= population, ids = country),
+              shape = 21,
+              color = "black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population, ids= country, color = score_spi, text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>SPI score</b>: %s (%s pt from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(score_spi, digits = 2),
+    ifelse(score_spi_diff > 0 , paste0("+", score_spi_diff), score_spi_diff),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change))),
+    alpha = .7) +
+  geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Social Progress Index score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    labels = function(x) {
+      round(x, digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "SPI \nscore",
+       size= "GDP per capita") +
+  guides(color = guide_colourbar(label = FALSE)) +
+  scale_color_gradient(low = "darkseagreen2", high = "dodgerblue4")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+
+highlight(ggplotly(g1,  tooltip = "text"),
+          "plotly_click", 
+          selectize = FALSE,
+          persistent = TRUE,
+          opacityDim = 0.1) %>% 
+  animation_opts(
+    1000, easing = "linear", redraw = TRUE
+  ) %>%
+  animation_button(
+    label = "Animate"
+  ) %>%
+  animation_slider(
+    currentvalue = list(prefix = "Year: ", font = list(color="black"), x = 1, xanchor = "right", y = 0, yanchor = "bottom")
+  )%>%
+  config(displayModeBar = FALSE)
+
+```
+
+***
+
+**The graph shows the relationship between top emerging economies SPI score and consumption based CO₂ emissions per capita.**
+
+- The BRICS countries are Brazil, Russia, India, China and South Africa.
+
+- Animate the graphic to see the trajectory of countries over time.
+
+- It is possible to highlight multiple countries by clicking on them. Double click (on empty spots) to refresh selection.
+
+- Hover the cursor over the dots to visualize country details.
+
+- The size of the dots corresponds to the size of the population and the horizontal dashed line represents the average CO₂ emissions necessary level to keep the temperature increase below 1.5°C by 2030.
+
+
+Average trends  {.storyboard}
+=========================================
+
+### **Evolution of the relationship between SPI and CO₂ emissions by SPI tier**
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+g1<- subset(df1, tiers != "NA" & co2_percap != "NA") %>% 
+  ggplot(aes(x = score_spi, y = co2_percap, frame= spiyear, color = tiers)) +
+  geom_jitter(aes(size= population, ids = country),
+              shape = 21,
+              color = "black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population,ids= country, text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>SPI score</b>: %s (%s pt from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(score_spi, digits = 2),
+    ifelse(score_spi_diff > 0 , paste0("+", score_spi_diff), score_spi_diff),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change))),
+    alpha = .7) +
+  stat_smooth(method = "lm", se= F, formula = y ~ poly(x, degree = 2),
+              alpha= .5, color = "darkgrey", size = .8, fullrange = TRUE)+
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Social Progress Index score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    labels = function(x) {
+      round(x, digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "",
+       caption = "") +
+  scale_size(range = c(3,8), guide="none")+
+  scale_color_viridis(option = "G", discrete = TRUE)+
+  theme_minimal()+
+  theme(
+    legend.position = "none",
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot")+ 
+  facet_wrap(. ~factor(tiers, levels = c("Tier 6",
+                                         "Tier 5",
+                                         "Tier 4",
+                                         "Tier 3",
+                                         "Tier 2",
+                                         "Tier 1")),
+             scales = "free_x")
+
+
+ggplotly(g1,  tooltip = "text") %>%
+  config(displayModeBar = FALSE) %>% 
+  animation_opts(
+    1000, easing = "linear", redraw = TRUE
+  ) %>%
+  animation_button(
+    label = "Animate"
+  ) %>%
+  animation_slider(
+    currentvalue = list(prefix = "Year: ", font = list(color="black"), x = 1, xanchor = "right", y = 0, yanchor = "bottom")
+  )
+```
+
+*** 
+
+**The graph shows the transformation of the relationship between SPI and consumption based CO₂ emissions per capita over time and across SPI tiers**
+
+- It shows a weakening relationship at the end of the period, demonstrating a stronger ability of countries in SPI tier 1 and 2 to decouple social progress from CO₂ emissions compared to countries in other SPI tiers.
+
+- The grey curves represent the overall relationship between CO₂ emissions and SPI scores within each tier.
+
+- Animate the graphic to see the change in the relationships between SPI scores and CO₂ emissions over time in each SPI tier.
+
+- Hover the cursor over the dots to visualize country details.
+
+
+Selected countries CO₂ performance {.storyboard}
+=====================================================  
+
+
+### **Highest emission decrease** : More than 20% decrease in CO₂ Emissions per capita in 2022
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+ss<-df1 %>% group_by(country) %>% 
+  filter(tiers2011 != "NA" &
+           any(OECD == "OECD" |
+               G20 == "G20" |
+               G7 == "G7" |
+               BRICS == "BRICS"|
+               spicountrycode == c("SWE","CHL","CRI",
+                                   "GHA","RWA","COD",
+                                   "MDG", "AGO", "SDN",
+                                   "HTI", "PNG", "TZA",
+                                   "NPL","THA", "MYS") |
+               population >= 100*(10^6)))
+
+g<-ggplot(ss, aes(spiyear, co2_pc_change, color = country)) +
+  geom_line(size= 2, alpha= .5) +
+    geom_jitter(size= 4, data = ss %>% filter(spiyear == 2022),
+              shape = 21,
+              color = "black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(size= 4, alpha= .8,  data = ss %>% filter(spiyear == 2022))+
+  geom_point(size= 2, color="darkgrey",
+             mapping = aes(x = 2011, y = 0))+
+  gghighlight(
+    co2_pc_change[spiyear==2022] < -20  &
+    score_spi_diff [spiyear==2022] > -10,
+    GDP_pc_change[spiyear==2022] > -10,
+    use_group_by = TRUE,
+    label_key = country,
+    max_highlight = 100,
+    unhighlighted_params = list(size = 1, colour = "lightgrey", alpha = 0.4),
+    label_params = list(size = 3, alpha = 0),
+    calculate_per_facet = TRUE) +
+  
+  #Adding labels 
+  geom_point(
+    data = ss %>% filter(spiyear == 2022 & 
+                           co2_pc_change < -20 &
+                           score_spi_diff > -10 & 
+                           GDP_pc_change > -10 ),  # filter the data for the labels
+    mapping = aes(
+      x = spiyear,
+      y = co2_pc_change,
+      color= spicountrycode,
+      text = sprintf(
+    "<b>%s<br></b>\nPopulation : %s<br>CO₂ emission p. c. : %s<br>CO₂ emission change (from 2011): %.2f%%",
+    country,
+    population,
+    round(co2_percap, digits = 2),
+    round(co2_pc_change, digits = 2))),
+    size = 5,
+    alpha= 0) +
+  
+    scale_y_continuous(
+    labels = function(y) {
+      paste0(y , '%')
+    }
+  ) +
+  ylab("") +
+  xlab("") +
+  labs(title = "" ,
+       subtitle = "",
+       color = "",
+       caption = "") +
+  scale_x_continuous(breaks = c(2011,2014,2017,2019,2022)) +
+  scale_color_hue(l=60, c=50)+
+  theme_minimal() +
+  facet_wrap(tiers2011~., nrow = 2, scales = "free_y")+
+  theme(axis.text.x = element_text(angle = 30, size = 9)) #NEW parameter
+
+hide_legend(ggplotly(g, tooltip = "text")) %>%
+  config(displayModeBar = FALSE)%>%
+  layout(hovermode = "x")
+```
+
+***
+
+**The graph shows the change over time in consumption based CO₂ emissions per capita for selected countries in each tier (based on 2011 SPI scores).**
+
+- Highlighted are countries that have decrease their CO₂ emission by more than 20% in 2022 compared to 2011.
+
+- Hover the cursor over the dots to visualize country info.
+
+### **Moderate improvers** : 5% to 20% decrease in CO₂ Emissions per capita in 2022
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+g<- ggplot(ss,aes(spiyear, co2_pc_change, color = country)) +
+  geom_line(size= 2, alpha= .5) +
+      geom_jitter(size= 4, data = ss %>% filter(spiyear == 2022),
+              shape = 21,
+              color = "black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(size= 4, alpha= .7, data = ss %>% filter(spiyear == 2022))+
+  geom_point(size= 2, color="darkgrey",
+             mapping = aes(x = 2011, y= 0))+
+  gghighlight(
+     co2_pc_change[spiyear==2022] > -20 & co2_pc_change[spiyear==2022] <= -5 &
+      score_spi_diff[spiyear==2022] > -10 &
+      GDP_pc_change[spiyear==2022] > -10,
+    use_group_by = TRUE,
+    label_key = country,
+    max_highlight = 100,
+    unhighlighted_params = list(size = 1, colour = "lightgrey", alpha = 0.5),
+    label_params = list(size = 3, alpha = 0),
+    calculate_per_facet = TRUE) +
+  
+  #Adding labels 
+  geom_point(
+    data = ss %>% filter(spiyear == 2022 & 
+                           co2_pc_change > -20 &
+                           co2_pc_change <= -5 &
+                           score_spi_diff > -10 & 
+                           GDP_pc_change > -10),  # filter the data for the labels
+    mapping = aes(
+      x = spiyear,
+      y = co2_pc_change,
+      color = spicountrycode,
+      text = sprintf(
+    "<b>%s<br></b>\nPopulation : %s<br>CO₂ emission p. c. : %s<br>CO₂ emission change (from 2011): %.2f%%",
+    country,
+    population,
+    round(co2_percap, digits = 2),
+    round(co2_pc_change, digits = 2))),
+    size = 5,
+    alpha = 0) +
+  
+  scale_y_continuous(
+                     labels = function(y) {
+                       paste0(y , '%')
+                     }
+  ) +
+  ylab("") +
+  xlab("") +
+  labs(title = "" ,
+       subtitle = "Reference year is 2011",
+       color = "",
+       caption = "") +
+  scale_x_continuous(breaks = c(2011,2014,2017,2019,2022)) +
+  scale_color_hue(l=60, c=50)+
+  theme_minimal() +
+  facet_wrap(.~ tiers2011, scales = "free_y")+
+  theme(legend.position = "none", axis.text.x = element_text(angle = 30, size = 9))
+
+
+
+ggplotly(g, tooltip = "text")%>%
+  config(displayModeBar = FALSE)%>%
+  layout(hovermode = "x")
+```
+
+***
+
+**The graph shows the change over time in consumption based CO₂ emissions per capita for selected countries in each tier (based on 2011 SPI scores).**
+
+- Highlighted are countries that have decrease their CO₂ emission by 5% up to 20% in 2022 compared to 2011.
+
+- Hover the cursor over the dots to visualize country info.
+
+
+### **No significant change**: -5% to +5% change in CO₂ Emissions per capita 2022
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+g<-ggplot(ss, aes(spiyear, co2_pc_change, color = country)) +
+  geom_line(size= 2, alpha= .5) +
+      geom_jitter(size= 5, data = ss %>% filter(spiyear == 2022),
+              shape = 21,
+              color = "black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(size= 4, alpha= .7, data = ss %>% filter(spiyear == 2022))+
+  geom_point(size= 2, color="darkgrey",
+             mapping = aes(x = 2011, y= 0))+
+  gghighlight(
+    co2_pc_change[spiyear==2022] > -5 & co2_pc_change[spiyear==2022] <= 5  &
+      score_spi_diff[spiyear==2022] > -10 &
+      GDP_pc_change[spiyear==2022] > -10,
+    use_group_by = TRUE,
+    label_key = country,
+    max_highlight = 100,
+    unhighlighted_params = list(size = 1, colour = "lightgrey", alpha = 0.4),
+    label_params = list(size = 3, alpha = 0),
+    calculate_per_facet = TRUE) +
+  
+  #Adding labels 
+  geom_point(
+    data = ss %>% filter(spiyear == 2022 & 
+                           co2_pc_change > -5 &
+                           co2_pc_change <= 5 &
+                           score_spi_diff > -10 & 
+                           GDP_pc_change > -10),  # filter the data for the labels
+    mapping = aes(
+      x = spiyear,
+      y = co2_pc_change,
+      label = country,
+      color = country,
+      text = sprintf(
+    "<b>%s<br></b>\nPopulation : %s<br>CO₂ emission p. c. : %s<br>CO₂ emission change (from 2011): %.2f%%",
+    country,
+    population,
+    round(co2_percap, digits = 2),
+    round(co2_pc_change, digits = 2))),
+    size = 5,
+    alpha= 0) +
+  scale_y_continuous(
+                     labels = function(y) {
+                       paste0(y , '%')
+                     }
+  ) +
+  ylab("") +
+  xlab("") +
+  labs(title = "" ,
+       subtitle = "Reference year is 2011",
+       color = "",
+       caption = "") +
+  scale_x_continuous(breaks = c(2011,2014,2017,2019,2022)) +
+  scale_color_hue(l=60, c=50)+
+  theme_minimal() +
+  facet_wrap(.~ tiers2011, scales = "free_y")+
+  theme(axis.text.x = element_text(angle = 30, size = 9)) #NEW parameter 
+
+hide_legend(ggplotly(g, tooltip = "text")%>%
+  config(displayModeBar = FALSE))%>%
+  layout(hovermode = "x")
+```
+
+***
+
+
+**The graph shows the change over time in consumption based CO₂ emissions per capita for selected countries in each tier (based on 2011 SPI scores).**
+
+- Highlighted are countries that have stagnated between a decrease of 5% and an increase of 5% in CO₂ emissions between 2011 and 2022.
+
+- Hover the cursor over the dots to visualize country info.
+
+
+### **Top emission increase**: 5% and more increase in CO₂ Emissions per capita 2022
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+g<-ggplot(ss, aes(spiyear, co2_pc_change, color = spicountrycode)) +
+  geom_line(size= 2, alpha= .5) +
+      geom_jitter(size= 4, data = ss %>% filter(spiyear == 2022),
+              shape = 21,
+              color = "black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(size= 4, alpha= .7, data = ss %>% filter(spiyear == 2022))+
+  geom_point(size= 2, color="darkgrey",
+             mapping = aes(x = 2011, y= 0))+
+  gghighlight(
+    co2_pc_change[spiyear==2022] >= 5 &
+      score_spi_diff[spiyear==2022] > -10 &
+      GDP_pc_change[spiyear==2022] > -10,
+    use_group_by = TRUE,
+    label_key = country,
+    max_highlight = 100,
+    unhighlighted_params = list(size = 1, colour = "lightgrey", alpha = 0.4),
+    label_params = list(size = 3, alpha = 0),
+    calculate_per_facet = TRUE) +
+  
+  #Adding labels 
+  geom_point(
+    data = ss %>% filter(spiyear == 2022 & 
+                           co2_pc_change >= 5 &
+                           score_spi_diff > -10 & 
+                           GDP_pc_change > -10),  # filter the data for the labels
+   mapping = aes(
+      x = spiyear,
+      y = co2_pc_change,
+      label = spicountrycode,
+      text = sprintf(
+    "<b>%s<br></b>\nPopulation : %s<br>CO₂ emission p. c. : %s<br>CO₂ emission change (from 2011): %.2f%%",
+    country,
+    population,
+    round(co2_percap, digits = 2),
+    round(co2_pc_change, digits = 2))),
+    size = 5,
+    alpha= 0) +
+  scale_y_continuous(
+                     labels = function(y) {
+                       paste0(y , '%')
+                     }
+  ) +
+  ylab("") +
+  xlab("") +
+  labs(title = "" ,
+       subtitle = "Reference year is 2011",
+       color = "",
+       caption = "") +
+  scale_x_continuous(breaks = c(2011,2014,2017,2019,2022)) +
+  scale_color_hue(l=60, c=50)+
+  theme_minimal() +
+  facet_wrap(.~ tiers2011, scales =  "free_y")+
+  theme(axis.text.x = element_text(angle = 30, size = 9),
+        legend.position = "top")
+
+
+hide_legend(ggplotly(g, tooltip = "text")%>%
+  config(displayModeBar = FALSE))%>%
+  layout(hovermode = "x") 
+```
+
+***
+
+**The graph shows the change over time in consumption based CO₂ emissions per capita for selected countries in each tier (based on 2011 SPI scores).**
+
+- Highlighted are countries that have increased their CO₂ emissions by more than 5% between 2011 and 2022.
+
+- Hover the cursor over the dots to visualize country info.
+
+
+Best hypothetical scenario {.storyboard}
+=========================================
+
+
+### **Is SPI Carbon intensive ?**
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+df_ref<- df1 %>%
+  group_by(country) %>%
+  mutate(ref_countries = case_when(any(spicountrycode== c("SWE","CRI","ARM","GHA","RWA","MDG"))~ "Reference",
+                                   !any(spicountrycode== c("SWE","CRI","ARM","GHA","RWA","MDG"))~ "Not reference"))
+
+sd <- highlight_key(subset(df_ref, spiyear == 2022) , ~ref_countries)
+
+
+g1<-ggplot(sd,
+           aes(x = score_spi, y = co2_percap, color = co2_intensity)) +
+  geom_jitter(aes(size= population),
+              color= "black",
+              shape = 21,
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population, ids= country, text = sprintf(
+    "<b>%s<br></b>\n<b>SPI carbon intensity</b>: %s%%<br><b>Population</b>: %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>SPI score</b>: %s (%s pt from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(co2_intensity*100, digits = 2),
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(score_spi, digits = 2),
+    ifelse(score_spi_diff > 0 , paste0("+", score_spi_diff), score_spi_diff),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change)),
+    alpha = .7)) +
+    geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  geom_smooth(method = "lm", se= T, color= "darkgrey")+
+  geom_text(data = df_ref %>% filter(spicountrycode %in% c("SWE","CRI","ARM","GHA","RWA","MDG") & spiyear == 2022),
+            aes(x = score_spi, y = co2_percap, label = spicountrycode),
+            size = 3,
+            nudge_x = 2,
+            color = "black",
+            font.face = "bold")+
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Social Progress Index score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    limits = c(25, 100),
+    labels = function(x) {
+      round(x , digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "Carbon \nintensity") +
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE)) +
+  scale_color_gradient(low = "darkseagreen4", high = "coral3",
+                       label =  function(x) 
+                         {
+                        paste0(round(x*100 , digits = 2), " %")  
+                         },
+                       trans = "log10")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+
+highlight(ggplotly(g1,  tooltip = "text"),
+          "plotly_click", 
+          selectize = FALSE,
+          persistent = TRUE,
+          opacityDim = 0.2,
+          color = "dodgerblue4")%>%
+  config(displayModeBar = FALSE)
+
+```
+
+***
+
+**The graph shows the relationship between SPI scores and per capita CO₂  emissions.**
+
+**The Carbon Intensity is defined as the amount of per capita emissions in tonnes of carbon dioxide (CO₂) equivalent, divided by the the SPI score and mesuring the amount of carbon contained in each country's SPI score.**
+
+- The grey line represents the linear trend of the relationship.
+
+- Select one of the labelled countries to highlight all the reference countries, i.e. those with the lowest carbon intensities within each SPI tier. Double click (on empty spots) to unselect.
+
+- Hover the cursor over the dots to visualize country details.
+
+- The size of the dots corresponds to the size of the population and the horizontal dashed line represents the average CO₂ emissions necessary level to keep the temperature increase below 1.5°C by 2030.
+
+
+### **Best hypothetical scenario**: What if all countries had the lowest Carbon intensity of their peer countries?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+
+df_all <- read_rds("data2.Rds")
+  
+sd <- highlight_key(subset(df_all, score_spi != "NA" & co2_percap != "NA" & co2_intensity!="NA" & spiyear == 2022) , ~country)
+
+g1<-ggplot(sd,
+           aes(x = score_spi, y = co2_percap, color = co2_percap, frame = case)) +
+  geom_jitter(aes(size= population, ids= country),
+              shape = 21,
+              color="black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population, ids= country, text = sprintf(
+    "<b>%s<br></b>\n<b>Saved emissions</b>: %s<br><b>Population</b>: %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>SPI score</b>: %s (%s pt from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(saved_co2, digits = 2),
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(score_spi, digits = 2),
+    ifelse(score_spi_diff > 0 , paste0("+", score_spi_diff), score_spi_diff),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change))),
+    alpha= .7) +
+  geom_hline(yintercept= 2 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Social Progress Index score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    limits = c(25, 100),
+    labels = function(x) {
+      round(x , digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       subtitle = "",
+       color = "CO₂ \nemissions",
+       size= "GDP per capita") +
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE)) +
+  scale_color_gradient(low = "darkseagreen4",high = "coral")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    legend.position = c(.9,.1),
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+
+
+highlight(ggplotly(g1,  tooltip = "text"),
+          "plotly_click", 
+          selectize = FALSE,
+          persistent = TRUE,
+          opacityDim = 0.1) %>% 
+  animation_opts(
+    1000, easing = "linear", redraw = TRUE
+  ) %>%
+  animation_button(
+    label = "Animate"
+  ) %>%
+  animation_slider(
+    currentvalue = list(prefix = "Case: ", font = list(color="black"), x = 1, xanchor = "right", y = 0, yanchor = "bottom")
+  )%>%
+  config(displayModeBar = FALSE)
+
+```
+
+
+***
+
+**The graph shows the actual versus the best case scenario of countries SPI scores and CO₂ emissions combinations.**
+
+- The best case scenario is based on assigning the lowest observed Carbon intensities to countries in each respective SPI tier (i.e, lowest carbon intensity in tier 1 to tier 1 countries and so on...).
+
+- Highlight multiple countries by clicking on them and animate the graph to track the change in their CO₂ emissions between the actual to the hypothetical situation. Double click (on empty spots) to refresh selection.
+
+- Hover the cursor over the dots to visualize country details.
+
+- The size of the dots corresponds to the size of the population and the horizontal dashed line represents the average CO₂ emissions necessary level to keep the temperature increase below 1.5°C by 2030.
+
+
+SPI Carbon intensity
+=========================================
+
+Inputs {.sidebar}
+-------------------------------------
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+
+df1<- df1[
+  order(df1[,3],df1[,19], df1[,20] ),
+]
+
+sd <- highlight_key(subset(df1, co2_intensity!="NA") , ~country)
+
+widgets <- filter_select("Tier", "Select SPI Tier (based on 2011 SPI scores", sd , ~factor(tiers2011), multiple = FALSE)
+
+bscols(widgets,
+       crosstool(sd, "transceiver", channel="filter", init = unique(df1$country[df1$tiers2011 == "Tier 1"]), reset= unique(df1$country)),
+       widths = c(12,0))
+
+```
+
+
+Column
+-------------------------------------
+
+### **SPI Carbon intensity in 2022**
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+base <- plot_ly(sd, color = I("dodgerblue4"))
+
+bar_plot <- base %>%
+  filter(spiyear == 2022) %>%
+  add_trace(
+    x = ~co2_intensity,
+    y = ~fct_reorder(country, co2_intensity, .desc = TRUE), type = 'scatter', mode = 'markers', size = 8,
+    text = ~country,
+    textposition = 'outside',
+    hoverinfo = 'text')%>%
+  layout(
+    xaxis = list(title = "Carbon intensity", fixedrange = F, zeroline = TRUE, range = list(0, .65)),
+    yaxis = list(title = "", fixedrange=F, showticklabels = T, categoryorder = "trace"),
+    showlegend = FALSE
+  )
+
+
+bar_plot %>%
+   highlight(on = "plotly_click", selectize = FALSE, persistent = TRUE, color = 'firebrick')%>%
+  config(displayModeBar = FALSE)
+```
+
+> Highlight countries by clicking on dotes
+
+Column
+-------------------------------------
+
+### **SPI Carbon intensity from 2011 to 2022**
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+base1 <- plot_ly(sd, color = I("dodgerblue4"))
+
+line_plot <- base1 %>%
+  add_trace(type = 'scatter', mode = 'lines',
+            line = list(color = I("dodgerblue4"), width = 2),
+            text = ~country,
+            hoverinfo = 'text',
+            
+    x = ~spiyear,
+    y = ~co2_intensity)%>%
+  filter(spiyear %in% c(2011,2022)) %>%
+  add_trace(x = ~spiyear, y = ~co2_intensity, type = 'scatter', mode = 'markers', marker = list(color = "dodgerblue4", size = 8),
+            text = ~country,
+            hoverinfo = 'text') %>%
+  layout(
+    yaxis = list(title = "Carbon intensity", fixedrange=TRUE, zeroline=T, range = list(0, .65)),
+    xaxis = list(title = "", fixedrange=TRUE),
+    showlegend = FALSE)
+
+
+line_plot %>%
+   highlight(on = "plotly_click", selectize = FALSE, persistent = TRUE, color = 'firebrick')%>%
+  config(displayModeBar = FALSE)
+
+```
+
+> Highlight countries by clicking on lines
+
+
+Explore More
+=========================================
+
+Inputs {.sidebar}
+-------------------------------------
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+spi_dim <- read_dta("tiers.dta") %>%
+  dplyr::select(country, spicountrycode, spiyear, score_spi, score_bhn, score_fow, score_opp)
+
+
+co2_data <- df1 %>%
+  dplyr::select(country, spicountrycode, spiyear, co2_percap, population, GDP_pc, co2_pc_change, score_spi_diff, GDP_pc_change, change_status)
+
+spi_co2_dim <- spi_dim %>%
+  merge(co2_data, by = c("country", "spicountrycode", "spiyear"), all = TRUE) %>%
+  mutate(id = paste(spicountrycode, spiyear),
+         spiyear = factor(spiyear))
+  
+
+
+sd <- highlight_key(spi_co2_dim , ~id)
+
+
+
+
+widgets <- list(
+  filter_select("Year", "Select Year" ,sd,  ~factor(spiyear), multiple = FALSE),
+  filter_slider("co2_percap", "Consumption based CO2 emissions per capita", sd , ~co2_percap, 
+                round = TRUE , step = 1, post = "t", width = "100%"),
+  filter_slider("score", "SPI score", sd , ~score_spi, 
+                round = TRUE , step = 1, width = "100%"),
+  filter_slider("GDP_pc", "GDP per capita", sd , ~ GDP_pc/1000, 
+                round = TRUE , step = 1, post = "K", width = "100%"),
+  filter_slider("population", "Population", sd , ~ population/1000000, 
+                round = TRUE , step = 1, post = "M", width = "100%"),
+  filter_checkbox(
+    "change_status", "CO2 emissions change (2011-2022)" ,sd, ~factor(change_status, levels = c("Less than -20%",
+                                                                                               "-20% to -5%",
+                                                                                               "-5% to +5%",
+                                                                                               "More than +5%")),
+                  inline = TRUE)
+  )
+
+bscols(widgets,
+       crosstool(sd, "transceiver", channel="filter",
+                 init = unique(spi_co2_dim$id[spi_co2_dim$spiyear == 2022]) ,
+                 reset = unique(spi_co2_dim$id)), widths = c(.5,11.5,0))
+```
+
+Column {.tabset}
+-------------------------------------
+
+### **Social Progress Index**
+
+<style>
+.myClass {
+  width: 100% !important;
+  float: left !important;
+  margin: 20px !important;
+}
+</style>
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+g1<-ggplot(sd ,
+           aes(x = score_spi  , y = co2_percap, color = score_spi)) +
+    geom_jitter(aes(size= population),
+              shape = 21,
+              color="black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population, text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change))),
+    alpha = .7) +
+  geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Social Progress Index Score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    limits = c(25, 100),
+    labels = function(x) {
+      round(x , digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "SPI score",
+       size= "GDP per capita",
+       caption = "") +
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE)) +
+  scale_color_gradient(low = "darkseagreen2", high = "dodgerblue4")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    legend.position = "none",
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+hide_legend(ggplotly(g1,  tooltip = "text"))%>%
+  config(displayModeBar = FALSE)
+
+```
+
+> **Consumption based CO₂ emissions data is provided by the Global Carbon Budget Project (https://www.globalcarbonproject.org/carbonbudget/)**
+
+### **Basic Human Needs**
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+g2<-ggplot(sd,
+           aes(x = score_bhn  , y = co2_percap, color = score_bhn)) +
+    geom_jitter(aes(size = population),
+              shape = 21,
+              color="black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population, text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change))),
+    alpha = .7) +
+  geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Basic Human Needs dimension Score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    limits = c(25, 100),
+    labels = function(x) {
+      round(x , digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "SPI score",
+       size= "GDP per capita",
+       caption = "") +
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE)) +
+  scale_color_gradient(low = "darkseagreen2", high = "dodgerblue4")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    legend.position = "none",
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+hide_legend(ggplotly(g2,  tooltip = "text"))%>%
+  config(displayModeBar = FALSE)
+
+```
+
+> **Consumption based CO₂ emissions data is provided by the Global Carbon Budget Project (https://www.globalcarbonproject.org/carbonbudget/)**
+
+### **Foundations Of Well-beign**
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+g3<-ggplot(sd ,
+           aes(x = score_fow  , y = co2_percap, color = score_fow)) +
+    geom_jitter(aes(size = population),
+              shape = 21,
+              color="black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population, text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change))),
+    alpha = .7) +
+  geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Foundations Of Well-beign dimension score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    limits = c(25, 100),
+    labels = function(x) {
+      round(x , digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "SPI score",
+       size= "GDP per capita",
+       caption = "") +
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE)) +
+  scale_color_gradient(low = "darkseagreen2", high = "dodgerblue4")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    legend.position = "none",
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+
+hide_legend(ggplotly(g3,  tooltip = "text"))%>%
+  config(displayModeBar = FALSE)
+
+```
+
+> **Consumption based CO₂ emissions data is provided by the Global Carbon Budget Project (https://www.globalcarbonproject.org/carbonbudget/)**
+
+### **Opportunity**
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+g4<-ggplot(sd ,
+           aes(x = score_opp  , y = co2_percap, color = score_opp)) +
+    geom_jitter(aes(size = population),
+              shape = 21,
+              color="black",
+              position = position_jitter(width = 0, height = 0)
+  ) +
+  geom_point(aes(size= population, text = sprintf(
+    "<b>%s<br></b>\n<b>Population</b> : %s Million<br><b>Carbon emission p. c.</b> : %s tCO₂e (%s%% from 2011)<br><b>GDP p.c.:</b> %sK (%s%% from 2011)",
+    country,
+    round(population/1000000, digits = 2) ,
+    round(co2_percap, digits = 2),
+    ifelse(co2_pc_change > 0 , paste0("+", co2_pc_change), co2_pc_change),
+    round(GDP_pc/1000, digits = 2),
+    ifelse(GDP_pc_change > 0 , paste0("+", GDP_pc_change), GDP_pc_change))),
+    alpha = .7) +
+  geom_hline(yintercept= 1.9 , linetype="dashed", color = "darkgrey", size= 1) +
+  ylab("Per capita CO₂ emissions (logarithmic scale)") +
+  xlab("Opportunity dimension score") +
+  scale_y_continuous(
+    trans = "log",
+    labels = function(x) {
+      paste0(round(x , digits = 2), 't')
+    }
+  ) +
+  scale_x_continuous(
+    limits = c(25, 100),
+    labels = function(x) {
+      round(x , digits = 2)
+    }
+  ) +
+  labs(title = "" ,
+       color = "SPI score",
+       size= "GDP per capita",
+       caption = "") +
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE)) +
+  scale_color_gradient(low = "darkseagreen2", high = "dodgerblue4")+
+  scale_size(range = c(3,14),guide="none")+
+  theme_minimal()+
+  theme(
+    legend.position = "none",
+    plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=1
+    plot.title.position = "plot", #NEW parameter. Apply for subtitle too.
+    plot.caption.position =  "plot") #NEW parameter
+
+
+hide_legend(ggplotly(g4,  tooltip = "text"))%>%
+  config(displayModeBar = FALSE)
+
+```
+
+<script type="text/javascript">
+  $(document).ready(function() {
+    $('.form-group').addClass('myClass');
+  });
+</script>
+
+> **Consumption based CO₂ emissions data is provided by the Global Carbon Budget Project (https://www.globalcarbonproject.org/carbonbudget/)**
